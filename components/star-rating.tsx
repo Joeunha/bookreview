@@ -24,28 +24,39 @@ export function StarRating({ value, onChange, readonly = false, size = 'md', cla
     <div className={cn('flex items-center gap-0.5', className)} role={readonly ? 'img' : 'group'} aria-label={`별점 ${value ?? 0}점`}>
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = value !== null && star <= value
+
+        const starIcon = (
+          <Star
+            width={px}
+            height={px}
+            style={filled ? { fill: 'var(--color-star)', color: 'var(--color-star)' } : undefined}
+            className={cn(
+              'transition-colors',
+              filled ? '' : 'fill-transparent text-border'
+            )}
+          />
+        )
+
+        if (readonly) {
+          return (
+            <span
+              key={star}
+              className="inline-flex"
+            >
+              {starIcon}
+            </span>
+          )
+        }
+
         return (
           <button
             key={star}
             type="button"
-            disabled={readonly}
             onClick={() => onChange?.(star)}
-            className={cn(
-              'transition-transform focus:outline-none',
-              !readonly && 'cursor-pointer hover:scale-110 focus-visible:scale-110',
-              readonly && 'cursor-default pointer-events-none'
-            )}
-            aria-label={readonly ? undefined : `${star}점`}
+            className="transition-transform focus:outline-none cursor-pointer hover:scale-110 focus-visible:scale-110"
+            aria-label={`${star}점`}
           >
-            <Star
-              width={px}
-              height={px}
-              style={filled ? { fill: 'var(--color-star)', color: 'var(--color-star)' } : undefined}
-              className={cn(
-                'transition-colors',
-                filled ? '' : 'fill-transparent text-border'
-              )}
-            />
+            {starIcon}
           </button>
         )
       })}

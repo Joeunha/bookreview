@@ -93,6 +93,12 @@ export function BookFormModal({ book, onSave, onClose }: BookFormModalProps) {
     const e: Record<string, string> = {}
     if (!form.title.trim()) e.title = '제목을 입력해주세요.'
     if (!form.author.trim()) e.author = '저자를 입력해주세요.'
+    
+    if (form.started_at && form.finished_at) {
+      if (new Date(form.started_at) > new Date(form.finished_at)) {
+        e.finished_at = '완독일은 시작일보다 빠를 수 없습니다.'
+      }
+    }
     return e
   }
 
@@ -109,7 +115,10 @@ export function BookFormModal({ book, onSave, onClose }: BookFormModalProps) {
 
     if (coverFile) {
       const fileExt = coverFile.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
+      const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+      const fileName = `${uniqueId}.${fileExt}`
       const { error: uploadError } = await supabase.storage
         .from('book-covers')
         .upload(fileName, coverFile)
@@ -137,9 +146,23 @@ export function BookFormModal({ book, onSave, onClose }: BookFormModalProps) {
     setUploading(false)
   }
 
-  function field(key: string, value: string) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+  function field(key: string, value: any) {
+    setForm((prev) => {
+      const updated = { ...prev, [key]: value }
+      if (key === 'status') {
+        if (value === 'want_to_read') {
+          updated.started_at = ''
+          updated.finished_at = ''
+        } else if (value === 'reading') {
+          updated.finished_at = ''
+        }
+      }
+      return updated
+    })
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: '' }))
+    if (key === 'started_at' || key === 'finished_at' || key === 'status') {
+      setErrors((prev) => ({ ...prev, started_at: '', finished_at: '' }))
+    }
   }
 
   return (
@@ -344,31 +367,36 @@ export function BookFormModal({ book, onSave, onClose }: BookFormModalProps) {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground" htmlFor="started_at">
-                시작일
-              </label>
-              <input
-                id="started_at"
-                type="date"
-                value={form.started_at}
-                onChange={(e) => field('started_at', e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[--color-moss]/40 focus:border-[--color-moss]"
-              />
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground" htmlFor="started_at">
+                  시작일
+                </label>
+                <input
+                  id="started_at"
+                  type="date"
+                  value={form.started_at}
+                  disabled={form.status === 'want_to_read'}
+                  onChange={(e) => field('started_at', e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[--color-moss]/40 focus:border-[--color-moss] disabled:opacity-50 disabled:bg-muted"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-foreground" htmlFor="finished_at">
+                  완독일
+                </label>
+                <input
+                  id="finished_at"
+                  type="date"
+                  value={form.finished_at}
+                  disabled={form.status === 'want_to_read' || form.status === 'reading'}
+                  onChange={(e) => field('finished_at', e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[--color-moss]/40 focus:border-[--color-moss] disabled:opacity-50 disabled:bg-muted"
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-foreground" htmlFor="finished_at">
-                완독일
-              </label>
-              <input
-                id="finished_at"
-                type="date"
-                value={form.finished_at}
-                onChange={(e) => field('finished_at', e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[--color-moss]/40 focus:border-[--color-moss]"
-              />
-            </div>
+            {errors.finished_at && <p className="text-xs text-destructive">{errors.finished_at}</p>}
           </div>
 
           {/* Memo */}
